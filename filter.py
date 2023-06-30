@@ -1,4 +1,4 @@
-def correlate(in1, in2, mode='full', method='auto'):
+def correlate(in1, in2):
     """
     Cross-correlate two N-dimensional arrays.
     The correlation is determined directly from sums. The output is the full discrete linear cross-correlation
@@ -24,16 +24,25 @@ def correlate(in1, in2, mode='full', method='auto'):
     elif in1.ndim != in2.ndim:
         raise ValueError("in1 and in2 should have the same dimensionality")
 
-        # fastpath to faster numpy.correlate for 1d inputs when possible
-    if conv1d(in1, in2, mode):
-        return np.correlate(in1, in2, mode)
-
     # _correlateND is far slower when in2.size > in1.size, so swap them
-    # and then undo the effect afterward if mode == 'full'. 
-    swapped_inputs = ((in2.size > in1.size))
+    # and then undo the effect afterward if mode == 'full'.  
+    swapped_inputs = (in2.size > in1.size)
 
     if swapped_inputs:
         in1, in2 = in2, in1
+
+    
+    ps = [i + j - 1 for i, j in zip(in1.shape, in2.shape)]
+
+    # zero pad input
+    in1zpadded = np.zeros(ps, in1.dtype)
+    sc = tuple(slice(0, i) for i in in1.shape)
+    in1zpadded[sc] = in1.copy()
+
+    
+    out = np.empty(ps, in1.dtype)
+
+    z = _sigtools._correlateND(in1zpadded, in2, out)
 
     if swapped_inputs:
         # Reverse and conjugate to undo the effect of swapping inputs
